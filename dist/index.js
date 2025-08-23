@@ -14,11 +14,13 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IndexedDBEngine = exports.CookieEngine = exports.SessionStorageEngine = exports.LocalStorageEngine = exports.MemoryEngine = exports.Utils = exports.createNamespace = exports.CacheManager = void 0;
+exports.IndexedDBEngine = exports.CookieEngine = exports.SessionStorageEngine = exports.LocalStorageEngine = exports.MemoryEngine = exports.Utils = exports.createNamespace = exports.SyncManager = exports.CacheManager = void 0;
 exports.createCache = createCache;
 // Core exports
 var CacheManager_1 = require("./core/CacheManager");
 Object.defineProperty(exports, "CacheManager", { enumerable: true, get: function () { return CacheManager_1.CacheManager; } });
+var SyncManager_1 = require("./core/SyncManager");
+Object.defineProperty(exports, "SyncManager", { enumerable: true, get: function () { return SyncManager_1.SyncManager; } });
 var Namespace_1 = require("./core/Namespace");
 Object.defineProperty(exports, "createNamespace", { enumerable: true, get: function () { return Namespace_1.createNamespace; } });
 var Utils_1 = require("./core/Utils");
@@ -56,6 +58,11 @@ function createCache(options = {}) {
             engine = new MemoryEngine_2.MemoryEngine();
             break;
     }
-    return new CacheManager_2.CacheManager(engine, { namespace });
+    const cache = new CacheManager_2.CacheManager(engine, { namespace });
+    // Enable sync if configuration provided
+    if (options.sync) {
+        cache.enableSync(options.sync);
+    }
+    return cache;
 }
 //# sourceMappingURL=index.js.map

@@ -1,4 +1,5 @@
 export { CacheManager } from "./core/CacheManager";
+export { SyncManager } from "./core/SyncManager";
 export { createNamespace } from "./core/Namespace";
 export { Utils } from "./core/Utils";
 export { MemoryEngine } from "./engine/MemoryEngine";
