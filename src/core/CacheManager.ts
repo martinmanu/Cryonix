@@ -11,12 +11,14 @@ export class CacheManager {
   private secure: boolean;
   private secret?: string;
   private syncManager?: SyncManager;
+  private defaultTTL?: number;
 
   constructor(engine: IStorageEngine, options?: CacheManagerOptions) {
     this.engine = engine;
     this.secure = options?.secure ?? false;
     this.secret = options?.secret;
     this.namespace = options?.namespace ? createNamespace(options.namespace) : undefined;
+    this.defaultTTL = options?.ttl;
   }
 
   enableSync(config: SyncConfig): void {
@@ -27,11 +29,19 @@ export class CacheManager {
     return this.namespace ? this.namespace.add(key) : key;
   }
 
-  async set<T>(key: string, value: T, options?: { sync?: boolean }): Promise<void> {
+  async set<T>(key: string, value: T, options?: { sync?: boolean; ttl?: number }): Promise<void> {
     const finalKey = this.withNamespace(key);
+    
+    // Create cache record with TTL
+    const ttl = options?.ttl ?? this.defaultTTL;
+    const cacheRecord = {
+      value,
+      expiresAt: ttl ? Date.now() + (ttl * 1000) : null
+    };
+    
     const processedValue = this.secure && this.secret 
-      ? await Utils.encrypt(value, this.secret)
-      : Utils.encode(value);
+      ? await Utils.encrypt(cacheRecord, this.secret)
+      : Utils.encode(cacheRecord);
     
     await this.engine.set(finalKey, processedValue);
 
@@ -45,9 +55,28 @@ export class CacheManager {
     const data = await this.engine.get(finalKey);
     if (!data) return null;
 
-    return this.secure && this.secret 
-      ? await Utils.decrypt<T>(data, this.secret)
-      : Utils.decode<T>(data);
+    try {
+      const cacheRecord = this.secure && this.secret 
+        ? await Utils.decrypt<any>(data, this.secret)
+        : Utils.decode<any>(data);
+
+      // Handle legacy data (direct values without CacheRecord wrapper)
+      if (cacheRecord && typeof cacheRecord === 'object' && 'value' in cacheRecord) {
+        // Check if expired
+        if (cacheRecord.expiresAt && Date.now() > cacheRecord.expiresAt) {
+          await this.remove(key);
+          return null;
+        }
+        return cacheRecord.value;
+      } else {
+        // Legacy data without TTL wrapper
+        return cacheRecord;
+      }
+    } catch (error) {
+      // If parsing fails, remove corrupted data
+      await this.remove(key);
+      return null;
+    }
   }
 
   async remove(key: string, options?: { sync?: boolean }): Promise<void> {
@@ -104,5 +133,39 @@ export class CacheManager {
 
   async removeFromSyncQueue(operationId: string): Promise<void> {
     await this.syncManager?.removeFromQueue(operationId);
+  }
+
+  // TTL methods
+  async cleanupExpired(): Promise<number> {
+    const allKeys = await this.engine.keys();
+    let cleanedCount = 0;
+    
+    for (const key of allKeys) {
+      if (this.namespace && !key.startsWith(this.namespace.prefix + ':')) {
+        continue; // Skip keys not in our namespace
+      }
+      
+      const data = await this.engine.get(key);
+      if (!data) continue;
+      
+      try {
+        const cacheRecord = this.secure && this.secret 
+          ? await Utils.decrypt<any>(data, this.secret)
+          : Utils.decode<any>(data);
+        
+        if (cacheRecord && typeof cacheRecord === 'object' && 'expiresAt' in cacheRecord) {
+          if (cacheRecord.expiresAt && Date.now() > cacheRecord.expiresAt) {
+            await this.engine.remove(key);
+            cleanedCount++;
+          }
+        }
+      } catch (error) {
+        // Remove corrupted data
+        await this.engine.remove(key);
+        cleanedCount++;
+      }
+    }
+    
+    return cleanedCount;
   }
 }

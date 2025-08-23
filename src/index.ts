@@ -39,7 +39,12 @@ export function createCache(options: CreateCacheOptions = {}): CacheManager {
       break;
   }
 
-  const cache = new CacheManager(engine, { namespace });
+  const cache = new CacheManager(engine, { 
+    namespace,
+    ttl: options.ttl,
+    secure: options.secure,
+    secret: options.secret
+  });
   
   // Enable sync if configuration provided
   if (options.sync) {
