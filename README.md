@@ -15,6 +15,7 @@ Cryonix transforms how modern applications handle data caching and synchronizati
 - 🔄 **Offline-First Sync** - Automatic API synchronization with conflict resolution
 - 🏪 **Multiple Storage Engines** - Memory, LocalStorage, SessionStorage, IndexedDB, Cookies
 - 🔐 **Enterprise Security** - AES encryption with customizable secrets
+- ⏰ **TTL Support** - Automatic expiration with Time-To-Live functionality
 - 🏷️ **Namespace Isolation** - Prevent key collisions across applications
 - 📦 **Full TypeScript Support** - Complete type safety and IntelliSense
 - ⚡ **Async/Await API** - Modern, promise-based interface
@@ -38,15 +39,19 @@ yarn add cryonix
 ```typescript
 import { createCache } from 'cryonix';
 
-// Create cache with localStorage backend
+// Create cache with localStorage backend and TTL
 const cache = createCache({ 
   backend: 'local', 
-  namespace: 'myapp' 
+  namespace: 'myapp',
+  ttl: 3600 // Default 1 hour expiration
 });
 
 // Store any data type
 await cache.set('user', { id: 1, name: 'John', preferences: {...} });
 await cache.set('settings', { theme: 'dark', language: 'en' });
+
+// Store with custom TTL
+await cache.set('session', sessionData, { ttl: 1800 }); // 30 minutes
 
 // Retrieve with type safety
 const user = await cache.get<User>('user');
@@ -158,6 +163,104 @@ await secureCache.set('userTokens', { jwt: 'eyJ...', refresh: 'rt_...' });
 
 // Data is encrypted in storage, decrypted on retrieval
 const tokens = await secureCache.get('userTokens');
+```
+
+## ⏰ TTL (Time-To-Live) Support
+
+Automatic data expiration with flexible TTL configuration for efficient cache management.
+
+### Basic TTL Usage
+
+```typescript
+// Set default TTL for all cache operations
+const cache = createCache({
+  backend: 'local',
+  ttl: 3600 // 1 hour default expiration (in seconds)
+});
+
+// Data expires automatically after 1 hour
+await cache.set('user-session', sessionData);
+
+// Override TTL per operation
+await cache.set('temp-data', tempData, { ttl: 300 }); // 5 minutes
+await cache.set('permanent', data, { ttl: 0 });       // Never expires
+```
+
+### Advanced TTL Features
+
+```typescript
+// Different TTL strategies
+const cache = createCache({ backend: 'indexeddb', ttl: 1800 });
+
+// Short-lived cache for API responses
+await cache.set('api-response', data, { ttl: 60 }); // 1 minute
+
+// Medium-lived cache for user preferences
+await cache.set('user-prefs', prefs, { ttl: 86400 }); // 24 hours
+
+// Long-lived cache for static content
+await cache.set('app-config', config, { ttl: 604800 }); // 1 week
+
+// Automatic cleanup of expired items
+const cleanedCount = await cache.cleanupExpired();
+console.log(`Cleaned up ${cleanedCount} expired items`);
+```
+
+### TTL with Encryption
+
+```typescript
+// Combine TTL with encryption for secure, temporary data
+const secureCache = createCache({
+  backend: 'local',
+  ttl: 900,        // 15 minutes default
+  secure: true,
+  secret: 'your-secret-key'
+});
+
+// Encrypted data that expires automatically
+await secureCache.set('auth-token', token, { ttl: 3600 }); // 1 hour
+await secureCache.set('sensitive-temp', data, { ttl: 300 }); // 5 minutes
+```
+
+### Real-World TTL Examples
+
+```typescript
+// E-commerce cart with session-based expiration
+const cartCache = createCache({
+  backend: 'local',
+  namespace: 'shopping-cart',
+  ttl: 7200 // 2 hours
+});
+
+// API response caching with different TTLs
+const apiCache = createCache({ backend: 'memory' });
+
+// Fast-changing data
+await apiCache.set('stock-prices', prices, { ttl: 30 });     // 30 seconds
+
+// Moderate-changing data  
+await apiCache.set('product-list', products, { ttl: 300 });  // 5 minutes
+
+// Slow-changing data
+await apiCache.set('categories', categories, { ttl: 3600 }); // 1 hour
+
+// User session management
+const sessionCache = createCache({
+  backend: 'session',
+  namespace: 'user-session',
+  ttl: 1800 // 30 minutes
+});
+
+await sessionCache.set('user-data', userData);
+await sessionCache.set('permissions', permissions);
+
+// Automatic cleanup on app startup
+setInterval(async () => {
+  const cleaned = await apiCache.cleanupExpired();
+  if (cleaned > 0) {
+    console.log(`Cleaned ${cleaned} expired cache entries`);
+  }
+}, 60000); // Check every minute
 ```
 
 ## 🔄 Advanced Sync Features
@@ -289,10 +392,13 @@ await pwaCache.set('app-settings', settings);
 
 ```typescript
 // Core operations
-await cache.set<T>(key: string, value: T, options?: {sync?: boolean}): Promise<void>
+await cache.set<T>(key: string, value: T, options?: {sync?: boolean, ttl?: number}): Promise<void>
 await cache.get<T>(key: string): Promise<T | null>
 await cache.remove(key: string, options?: {sync?: boolean}): Promise<void>
 await cache.clear(): Promise<void>
+
+// TTL operations
+await cache.cleanupExpired(): Promise<number> // Returns count of cleaned items
 
 // Sync operations
 cache.enableSync(config: SyncConfig): void
@@ -314,6 +420,9 @@ await cache.removeFromSyncQueue(operationId: string): Promise<void>
 interface CreateCacheOptions {
   backend?: 'memory' | 'local' | 'session' | 'indexeddb' | 'cookie'
   namespace?: string
+  ttl?: number              // Default TTL in seconds
+  secure?: boolean          // Enable encryption
+  secret?: string           // Encryption secret
   sync?: SyncConfig
 }
 
