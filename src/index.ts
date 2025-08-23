@@ -1,5 +1,6 @@
 // Core exports
 export { CacheManager } from "./core/CacheManager";
+export { SyncManager } from "./core/SyncManager";
 export { createNamespace } from "./core/Namespace";
 export { Utils } from "./core/Utils";
 
@@ -38,5 +39,12 @@ export function createCache(options: CreateCacheOptions = {}): CacheManager {
       break;
   }
 
-  return new CacheManager(engine, { namespace });
+  const cache = new CacheManager(engine, { namespace });
+  
+  // Enable sync if configuration provided
+  if (options.sync) {
+    cache.enableSync(options.sync);
+  }
+  
+  return cache;
 }
