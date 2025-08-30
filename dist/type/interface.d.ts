@@ -9,6 +9,9 @@ export type BackendType = "memory" | "local" | "session";
 export interface CreateCacheOptions {
     backend?: BackendType;
     namespace?: string;
+    ttl?: number;
+    secure?: boolean;
+    secret?: string;
     sync?: SyncConfig;
 }
 export interface CacheOptions {

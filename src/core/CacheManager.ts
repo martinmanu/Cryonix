@@ -32,7 +32,6 @@ export class CacheManager {
   async set<T>(key: string, value: T, options?: { sync?: boolean; ttl?: number }): Promise<void> {
     const finalKey = this.withNamespace(key);
     
-    // Create cache record with TTL
     const ttl = options?.ttl ?? this.defaultTTL;
     const cacheRecord = {
       value,
@@ -60,20 +59,16 @@ export class CacheManager {
         ? await Utils.decrypt<any>(data, this.secret)
         : Utils.decode<any>(data);
 
-      // Handle legacy data (direct values without CacheRecord wrapper)
       if (cacheRecord && typeof cacheRecord === 'object' && 'value' in cacheRecord) {
-        // Check if expired
         if (cacheRecord.expiresAt && Date.now() > cacheRecord.expiresAt) {
           await this.remove(key);
           return null;
         }
         return cacheRecord.value;
       } else {
-        // Legacy data without TTL wrapper
         return cacheRecord;
       }
     } catch (error) {
-      // If parsing fails, remove corrupted data
       await this.remove(key);
       return null;
     }
@@ -90,19 +85,16 @@ export class CacheManager {
 
   async clear(): Promise<void> {
     if (this.namespace) {
-      // Clear only items within this namespace
       const keys = await this.engine.keys();
       const nsKeys = keys.filter((k) => k.startsWith(this.namespace!.prefix + ":"));
       for (const k of nsKeys) {
         await this.engine.remove(k);
       }
     } else {
-      // Clear everything
       await this.engine.clear();
     }
   }
 
-  // Sync methods
   async sync(): Promise<void> {
     await this.syncManager?.processSyncQueue();
   }
@@ -135,14 +127,13 @@ export class CacheManager {
     await this.syncManager?.removeFromQueue(operationId);
   }
 
-  // TTL methods
   async cleanupExpired(): Promise<number> {
     const allKeys = await this.engine.keys();
     let cleanedCount = 0;
     
     for (const key of allKeys) {
       if (this.namespace && !key.startsWith(this.namespace.prefix + ':')) {
-        continue; // Skip keys not in our namespace
+        continue;
       }
       
       const data = await this.engine.get(key);
@@ -160,7 +151,6 @@ export class CacheManager {
           }
         }
       } catch (error) {
-        // Remove corrupted data
         await this.engine.remove(key);
         cleanedCount++;
       }
