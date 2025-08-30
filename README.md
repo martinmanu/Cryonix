@@ -465,7 +465,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📄 License
 
-MIT © [Your Name](https://github.com/yourusername)
+MIT © [YOUR_NAME](https://github.com/YOUR_USERNAME)
 
 ---
 

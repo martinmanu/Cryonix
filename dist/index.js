@@ -58,7 +58,12 @@ function createCache(options = {}) {
             engine = new MemoryEngine_2.MemoryEngine();
             break;
     }
-    const cache = new CacheManager_2.CacheManager(engine, { namespace });
+    const cache = new CacheManager_2.CacheManager(engine, {
+        namespace,
+        ttl: options.ttl,
+        secure: options.secure,
+        secret: options.secret
+    });
     // Enable sync if configuration provided
     if (options.sync) {
         cache.enableSync(options.sync);

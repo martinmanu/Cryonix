@@ -1,6 +1,6 @@
 {
   "name": "cryonix",
-  "version": "2.0.2",
+  "version": "1.0.0",
   "description": "A flexible caching library with multiple storage engines and encryption support",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,17 +23,20 @@
     "indexedDB",
     "memory",
     "encryption",
-    "typescript"
+    "typescript",
+    "offline",
+    "sync",
+    "ttl"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "YOUR_NAME <your.email@example.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/cryonix.git"
+    "url": "git+https://github.com/YOUR_USERNAME/cryonix.git"
   },
-  "homepage": "https://github.com/yourusername/cryonix#readme",
+  "homepage": "https://github.com/YOUR_USERNAME/cryonix#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/cryonix/issues"
+    "url": "https://github.com/YOUR_USERNAME/cryonix/issues"
   },
   "devDependencies": {
     "typescript": "^5.9.2",

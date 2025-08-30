@@ -56,17 +56,15 @@ export class SyncManager {
   }
 
   async queueOperation(type: SyncOperation['type'], key: string, data?: any): Promise<void> {
-    // Check if key should be excluded from sync
     if (this.config.excludeKeys?.includes(key)) {
       return;
     }
 
-    // Handle conflict resolution for existing operations
     const existingIndex = this.syncQueue.findIndex(op => op.key === key);
     if (existingIndex !== -1) {
       const existing = this.syncQueue[existingIndex];
       if (this.config.conflictResolution === 'last-write-wins') {
-        this.syncQueue.splice(existingIndex, 1); // Remove old operation
+        this.syncQueue.splice(existingIndex, 1);
       } else if (this.config.conflictResolution === 'merge' && this.config.hooks?.onConflict) {
         data = await this.config.hooks.onConflict(existing, data);
       }
@@ -84,9 +82,8 @@ export class SyncManager {
 
     this.syncQueue.push(operation);
     
-    // Enforce queue size limit
     if (this.syncQueue.length > this.config.maxQueueSize!) {
-      this.syncQueue.shift(); // Remove oldest operation
+      this.syncQueue.shift();
     }
 
     await this.saveSyncQueue();
@@ -108,13 +105,11 @@ export class SyncManager {
     let failCount = 0;
 
     while (this.syncQueue.length > 0 && this.isOnline) {
-      // Get batch of operations
       const batch = this.syncQueue.slice(0, this.config.batchSize!);
       
       try {
         const results = await this.syncBatch(batch);
         
-        // Process results
         for (let i = 0; i < batch.length; i++) {
           const operation = batch[i];
           const success = results[i];
@@ -132,12 +127,11 @@ export class SyncManager {
               this.config.hooks?.onSyncError?.(operation, error);
             } else {
               await this.delay(this.config.retryDelay!);
-              break; // Stop processing batch on failure
+              break;
             }
           }
         }
       } catch (error) {
-        // Handle batch error
         for (const operation of batch) {
           operation.retryCount++;
           if (operation.retryCount >= this.config.maxRetries!) {
@@ -160,7 +154,6 @@ export class SyncManager {
       return await this.config.onSync(operations);
     }
 
-    // Default HTTP batch sync implementation
     const response = await fetch(this.config.apiEndpoint, {
       method: 'POST',
       headers: {
@@ -194,7 +187,6 @@ export class SyncManager {
     return this.isOnline;
   }
 
-  // New utility methods
   getQueueSize(): number {
     return this.syncQueue.length;
   }
